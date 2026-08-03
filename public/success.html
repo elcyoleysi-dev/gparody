@@ -5,25 +5,60 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gmail - Inbox</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
-<body>
-    <div class="container" style="background: white; min-height: 100vh;">
-        <div style="max-width: 800px; margin: 0 auto; padding: 40px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #dadce0; padding-bottom: 20px;">
-                <img src="https://www.gstatic.com/images/branding/googlelogo/2x/googlelogo_light_color_272x92dp.png" alt="Google" style="height: 30px;">
-                <span style="color: #5f6368;">📧 Gmail</span>
+<body style="background: #f6f8fc;">
+    <div class="inbox-container">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div class="top-bar-left">
+                <div class="menu-icon">☰</div>
+                <img src="https://www.gstatic.com/images/branding/googlelogo/2x/googlelogo_light_color_272x92dp.png" alt="Google" class="gmail-logo">
+                <span class="gmail-text">Gmail</span>
             </div>
-            
-            <div style="text-align: center; margin-top: 60px;">
-                <div style="font-size: 80px; margin-bottom: 20px;">✅</div>
-                <h1 style="color: #202124; font-size: 32px;">Welcome to your Gmail!</h1>
-                <p style="color: #5f6368; font-size: 18px; margin-top: 10px;">You have successfully signed in.</p>
-                <div style="margin-top: 40px; background: #f8f9fa; padding: 30px; border-radius: 8px;">
-                    <p style="color: #5f6368;">📌 <strong>Movie Scene Complete</strong></p>
-                    <p style="color: #9aa0a6; font-size: 14px;">This is a parody page for filming purposes only.</p>
+            <div class="top-bar-right">
+                <span class="user-avatar">A</span>
+            </div>
+        </div>
+        
+        <!-- Inbox Content -->
+        <div class="inbox-content">
+            <div class="welcome-card">
+                <div class="checkmark">✅</div>
+                <h1 class="welcome-title">Welcome to Gmail</h1>
+                <p class="welcome-subtitle">You have successfully signed in.</p>
+                
+                <div class="inbox-preview">
+                    <div class="email-item">
+                        <div class="email-sender">Google Team</div>
+                        <div class="email-subject">Welcome to Gmail</div>
+                        <div class="email-preview">Thanks for signing in...</div>
+                    </div>
+                    <div class="email-item">
+                        <div class="email-sender">YouTube</div>
+                        <div class="email-subject">Your daily digest</div>
+                        <div class="email-preview">Here are your recommended videos...</div>
+                    </div>
+                    <div class="email-item">
+                        <div class="email-sender">Google Drive</div>
+                        <div class="email-subject">Storage update</div>
+                        <div class="email-preview">You have used 2.3 GB of storage...</div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 30px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e8eaed;">
+                    <p style="color: #5f6368; font-size: 13px; text-align: center;">
+                        📌 This is a simulated Gmail experience for production use
+                    </p>
                 </div>
             </div>
         </div>
     </div>
+    
+    <script>
+        // Clear session data on success page
+        sessionStorage.clear();
+        console.log('✅ Success page loaded - Session cleared');
+    </script>
 </body>
 </html>
